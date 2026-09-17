@@ -10,3 +10,189 @@ body[data-quality="low"] .film-grain{display:none}
 #stick-knob{will-change:transform}
 #game-hud{-webkit-user-select:none;user-select:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}.film-grain{display:none}}
+
+
+/* Chapter I — cold moonlight, warm offerings, quiet editorial typography. */
+:root { --paper:#edece3; --muted:#a8b3ae; --mint:#d5be8f; --line:rgba(217,218,201,.2); }
+.menu-screen { background:linear-gradient(90deg,rgba(5,12,14,.86),rgba(6,13,15,.26) 48%,rgba(6,13,15,.1) 68%,rgba(6,13,15,.5)); }
+.site-header { padding-bottom:20px; height:65px; border-bottom:1px solid var(--line); }
+.brand { font-size:11px; letter-spacing:3px; }
+.brand-mark { color:var(--mint); border-color:#bca77c77; }
+.header-center { color:#aebcb9; font-size:8px; letter-spacing:2.4px; }
+.header-issue { border-left:1px solid var(--line); padding-left:24px; margin-left:16px; color:var(--mint); }
+.sound-toggle { border:1px solid var(--line); padding:11px 14px; min-height:44px; background:#101b1d55; }
+.sound-toggle:hover { background:#d5be8f18; }
+.live-dot { background:#b5c6bc; box-shadow:0 0 10px #b5c6bc55; }
+.eyebrow { color:var(--mint); font-size:9px; letter-spacing:2.5px; }
+.eyebrow-jp { font-family:var(--serif); font-size:10px; margin-left:12px; padding-left:14px; border-left:1px solid #d5be8f55; letter-spacing:2px; color:#b2bdb5; }
+h1 { font-weight:500; letter-spacing:.09em; line-height:1.4; font-size:clamp(66px,6.8vw,106px); margin:24px 0; text-shadow:0 3px 40px #040a0d80; }
+h1>span { color:#e8e8dc; }
+.intro-copy { color:#b4c0b9; font-size:13px; letter-spacing:.18em; line-height:2.4; }
+.intro-meta { color:#a5b3ab; margin-top:27px; font-size:9px; letter-spacing:1px; }
+.mission-card { border-color:#c5cab42b; background:linear-gradient(150deg,#152326b0,#0b141b99); backdrop-filter:blur(12px); box-shadow:0 16px 70px #0002; padding:25px; width:276px; }
+.mission-card:before,.mission-card:after { border-color:#c4ae7c; width:13px; height:13px; }
+.card-heading { color:#c5bc9f; font-size:7px; letter-spacing:1.5px; }
+.card-heading>span:last-child { color:#8a9b96; font-size:6px; }
+.mission-art { height:125px; margin:9px 0; background:radial-gradient(ellipse,#bd9b4c12,transparent 65%); }
+.pie-drawing { border-color:#c9b07b; filter:drop-shadow(0 0 10px #b7985240); transform:rotate(-13deg) scale(1.15); }
+.art-orbit { width:132px; height:89px; border-color:#ceb57c22; }
+.art-caption { color:#b4a984; font-size:6px; letter-spacing:1.5px; }
+.art-number { position:absolute; right:3px; top:12px; font-family:var(--serif); font-size:45px; color:#b9c7b614; }
+.mission-card h2 { font-size:23px; font-weight:500; line-height:1.8; color:#e1e5da; }
+.mission-card p { font-size:10px; line-height:2.2; color:#aebcb4; }
+.mission-caption { font-family:var(--serif); font-size:10px; color:#c0ae8d; border-top:1px solid var(--line); margin-top:19px; padding-top:15px; letter-spacing:.1em; }
+.entity-row { border:0; margin-top:10px; padding-top:0; color:#b7c0b7; }
+.entity-row i { background:#b6a174; }
+.scene-caption { position:absolute; left:57%; top:70%; display:flex; flex-direction:column; align-items:center; gap:13px; pointer-events:none; color:#cbd2c5aa; }
+.scene-caption>span { font-family:var(--serif); font-size:12px; letter-spacing:5px; }
+.scene-caption i { height:32px; width:1px; background:linear-gradient(#bdb89577,transparent); }
+.scene-caption small { font-size:6px; letter-spacing:2px; color:#a8b5aa88; }
+.menu-bottom { margin-top:0; }
+.start-area { width:350px; }
+.difficulty-control { margin-bottom:4px; }
+.segmented button { min-height:36px; font-size:10px; padding:7px 16px; color:#aeb9ad; }
+.segmented .selected { color:#e3d7b9; border-color:#d3bd8855; background:#d3bd8812; }
+.difficulty-description { min-height:17px; font-size:9px; color:#aab6af; margin:8px 0 16px; line-height:1.8; letter-spacing:.025em; }
+.primary-button { background:linear-gradient(110deg,#dac79d,#bba57c); color:#192122; border:1px solid #e8d7b7; box-shadow:0 4px 28px #cfb47010; min-height:74px; }
+.primary-button:hover { background:#eadabd; box-shadow:0 6px 34px #d0b67b26; }
+.primary-button .button-arrow { padding-left:20px; border-left:1px solid #34413a38; transition:transform .25s; }
+.primary-button:hover .button-arrow { transform:translate(3px,-3px); }
+.start-label>span { color:#4d5649; font-size:7px; }
+.start-note { color:#acb6aa; font-size:8px; }
+.footer-links { color:#c4cec3; font-size:11px; }
+.footer-links button { min-height:44px; }
+.page-coordinate { color:#a0ada3; font-size:7px; border-color:#b9c7b32a; }
+.edition { color:#c4b694; letter-spacing:1.3px; font-variant-numeric:tabular-nums; }
+.hud-header { padding:24px 32px; background:linear-gradient(#050d12cc,transparent); }
+.hud-actions button { width:44px; height:44px; border-color:#bbc5b43d; background:#0b161d88; }
+.objective { position:absolute; left:50%; transform:translateX(-50%); }
+.objective strong { font-family:var(--serif); font-size:25px; color:#e5d3a8; }
+.objective small { font-size:9px; color:#ccd1c0; }
+.pie-icon { color:#c4ab77; }
+.offering-progress { grid-column:1/-1; height:3px; width:100%; margin-top:12px; --collected:0; background:linear-gradient(to right,#d5be8f calc(var(--collected)*10%),#d5be8f25 0); mask-image:repeating-linear-gradient(90deg,#000 0 7%,transparent 7% 10%); }
+.compass { top:108px; font-family:monospace; }
+.compass:before,.compass:after { content:''; width:28px; height:6px; opacity:.5; background:repeating-linear-gradient(90deg,#abbcad 0 1px,transparent 1px 7px); }
+.toast { top:157px; background:#0c181ee8; border-color:#cdbb9140; border-left:2px solid #baa575; color:#e0dfcf; font-size:11px; backdrop-filter:blur(8px); }
+.chapter-intro { position:absolute; top:34%; left:50%; transform:translateX(-50%); text-align:center; width:max-content; max-width:90%; pointer-events:none; text-shadow:0 2px 15px #000; }
+.chapter-intro span { display:block; font:8px var(--sans); letter-spacing:4px; color:#c7b48e; }
+.chapter-intro strong { display:block; font:500 30px var(--serif); letter-spacing:7px; margin:15px 0; }
+.chapter-intro small { color:#c1c9bc; font:10px var(--serif); letter-spacing:2px; }
+.vital-panel { width:180px; }
+.vital-track { height:4px; background:#becaba26; }
+.vital-label { font-size:8px; }
+.forest-state { font:10px var(--serif); letter-spacing:2px; color:#aeb8aa; margin-top:15px; }
+.forest-state:before { content:''; display:inline-block; height:4px; width:4px; margin:0 8px 2px 0; background:#99b1a0; border-radius:50%; }
+.forest-state.alert { color:#dab29b; }
+.forest-state.alert:before { background:#d69877; }
+.desktop-hint { color:#b1bcaf; font-size:9px; }
+.dialog { background:linear-gradient(140deg,#172429,#0c161b); border-color:#b8c5ae40; box-shadow:0 25px 100px #0008; }
+.dialog h2 { font-weight:500; }
+.dialog .eyebrow { color:#cfb789; }
+.dialog input,.dialog select { accent-color:#c8b387; }
+.dialog select { color:#e4e6d8; background:#122026; }
+.overlay-screen { backdrop-filter:blur(7px); background:#040b10b3; }
+.close-button { min-width:44px; min-height:44px; }
+.map-panel { background:#0b171eea; border-color:#b4c5ac40; backdrop-filter:blur(12px); }
+body.reduced-motion *,body.reduced-motion *:before,body.reduced-motion *:after { animation:none!important; transition:none!important; }
+body.reduced-motion .film-grain { display:none; }
+@media (min-width:761px) and (min-height:700px) {
+  .menu-content { height:calc(100% - 320px); min-height:320px; padding-top:6px; }
+  .menu-bottom { margin-top:0; }
+}
+@media (min-width:1100px) and (min-height:850px) {
+  .menu-content { height:calc(100% - 355px); }
+  .intro { padding-top:20px; }
+  .mission-card { margin-top:15px; }
+  .menu-bottom { margin-top:18px; }
+}
+@media (max-width:1100px) { .scene-caption { display:none; } }
+@media (max-width:760px) and (orientation:portrait) {
+  /* Flow layout never traps the start button below a small phone's viewport. */
+  .menu-screen { overflow-y:auto; padding:20px 24px 0; display:flex; flex-direction:column; background:linear-gradient(90deg,#060e13df,#0a141967 70%,#0b161b55); }
+  .site-header { flex-shrink:0; height:52px; padding-bottom:14px; }
+  .brand { font-size:9px; letter-spacing:2px; }
+  .sound-toggle { font-size:7px; min-height:38px; padding:7px 9px; }
+  .menu-content { height:auto; min-height:0; display:block; padding:0; flex:1 0 auto; }
+  .intro { position:static; padding:25px 0 0; }
+  .eyebrow { font-size:7px; letter-spacing:2px; }
+  .eyebrow-jp { font-size:8px; margin-left:1px; padding-left:10px; }
+  h1 { font-size:clamp(52px,13.8vw,86px); line-height:1.4; margin:14px 0 12px; }
+  .intro-copy { font-size:11px; line-height:2.2; margin-bottom:0; }
+  .intro-meta { display:none; }
+  .mission-card { position:relative; top:auto; left:auto; width:100%; margin:22px 0 18px; padding:14px 16px; display:block; }
+  .mission-card h2 { font-size:15px; line-height:1.8; margin:8px 0 5px; }
+  .mission-card h2 br { display:none; }
+  .mission-card p { font-size:9px; line-height:1.8; margin:0; max-width:calc(100% - 42px); }
+  .mission-card p br:first-child { display:none; }
+  .mission-caption,.entity-row { display:none; }
+  .mission-art { position:absolute; top:16px; right:7px; width:69px; height:58px; margin:0; opacity:.55; }
+  .pie-drawing { transform:rotate(-13deg) scale(.65); }
+  .art-orbit { width:65px; height:45px; }
+  .art-number,.art-caption { display:none; }
+  .menu-bottom { position:static; margin:0; display:block; flex-shrink:0; }
+  .start-area { width:100%; }
+  .field-label { font-size:8px; }
+  .segmented button { min-width:48px; min-height:38px; padding:7px 12px; }
+  .difficulty-description { font-size:9px; margin:3px 0 11px; }
+  .primary-button { min-height:68px; }
+  .start-note { font-size:8px; margin-top:10px; }
+  .footer-links { position:static; display:flex; justify-content:center; gap:36px; margin:13px 0 8px; }
+  .page-coordinate { position:static; padding:12px 0 max(14px,env(safe-area-inset-bottom)); font-size:6px; gap:12px; }
+  .scene-caption { display:none; }
+  .hud-header { padding:18px 20px; }
+  .hud-brand { font-size:8px; }
+  .hud-brand .brand-mark { display:none; }
+  .hud-brand small { font-size:6px; }
+  .hud-actions { gap:6px; }
+  .hud-actions button { min-width:40px; width:40px; height:42px; }
+  .objective { top:20px; }
+  .objective strong { font-size:21px; }
+  .objective .pie-icon { font-size:24px; }
+  .compass { top:100px; }
+  .toast { top:137px; font-size:10px; padding:10px 14px; }
+  .chapter-intro strong { font-size:23px; letter-spacing:5px; }
+  .chapter-intro span { font-size:6px; letter-spacing:3px; }
+  .forest-state { font-size:8px; margin-top:9px; }
+  .touch-device .hud-bottom { bottom:max(22px,env(safe-area-inset-bottom)); }
+  .vital-panel { width:144px; }
+}
+@media (max-width:760px) and (max-height:720px) and (orientation:portrait) {
+  .intro { padding-top:18px; }
+  h1 { font-size:48px; margin:10px 0; }
+  .intro-copy { font-size:10px; }
+  .mission-card { margin:16px 0 10px; padding:10px 13px; }
+  .mission-card h2 { font-size:14px; margin:5px 0; }
+  .mission-card p { font-size:8px; }
+  .menu-screen { padding-top:14px; }
+}
+@media (max-height:540px) and (orientation:landscape) {
+  .site-header { height:40px; padding-bottom:9px; }
+  .sound-toggle { min-height:34px; padding:6px 10px; }
+  .intro { top:76px; }
+  h1 { font-size:43px; line-height:1.25; margin:12px 0; }
+  .eyebrow-jp { font-size:7px; }
+  .mission-card { top:78px; padding:12px 17px; }
+  .mission-card h2 { font-size:16px; margin:9px 0; }
+  .mission-card p { font-size:9px; }
+  .mission-caption { display:none; }
+  .entity-row { margin-top:10px; }
+  .menu-bottom { bottom:39px; }
+  .difficulty-control { margin-bottom:3px; }
+  .difficulty-description { margin:0 0 5px; font-size:7px; min-height:12px; }
+  .segmented button { min-height:30px; padding:5px 12px; }
+  .primary-button { min-height:48px; }
+  .scene-caption { display:none; }
+  .hud-header { padding:10px 22px; }
+  .hud-actions button { min-width:40px; width:40px; height:40px; }
+  .offering-progress { margin-top:6px; }
+  .compass { top:72px; }
+  .toast { top:98px; padding:8px 14px; }
+  .chapter-intro { top:40%; }
+  .chapter-intro strong { font-size:21px; margin:8px 0; }
+  .chapter-intro small,.forest-state { display:none; }
+}
+@media (max-height:440px) and (orientation:landscape) {
+  .intro { top:70px; }
+  .intro-copy { display:none; }
+  h1 { font-size:36px; line-height:1.2; margin:10px 0; }
+}
