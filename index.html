@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a100e">
+  <meta name="description" content="森は、見ている。3種類の怪異から逃れ、10個のパイを集める、スマホ対応の3Dサバイバルホラー。">
+  <title>HOLLOW WOODS — 森は、見ている。</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;900&family=Noto+Serif+JP:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <canvas id="world" aria-label="3Dの森のゲーム画面"></canvas>
+  <div id="world-fallback"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="film-grain" aria-hidden="true"></div>
+  <div id="danger-overlay" aria-hidden="true"></div>
+  <div id="flash-overlay" aria-hidden="true"></div>
+
+  <section id="menu-screen" class="screen menu-screen">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Hollow Woods ホーム"><span class="brand-mark">Ⅲ</span><span>HOLLOW<br>WOODS<span class="brand-dot">®</span></span></a>
+      <div class="header-center"><span class="live-dot"></span> A FOREST THAT NEVER SLEEPS</div>
+      <button id="sound-toggle" class="icon-button sound-toggle" aria-label="サウンドを有効にする"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path class="sound-waves" d="M15 8c3 2 3 6 0 8m3-11c5 4 5 10 0 14"/><path class="sound-off" d="m16 9 5 6m0-6-5 6"/></svg><span>SOUND OFF</span></button>
+    </header>
+    <main class="menu-content">
+      <section class="intro">
+        <p class="eyebrow"><span></span> FIRST-PERSON SURVIVAL HORROR</p>
+        <h1>森は、<br><span>見ている。</span></h1>
+        <p class="intro-copy">振り返らないで。<br>その足音は、あなたのものじゃない。</p>
+        <div class="intro-meta"><span>3D EXPLORATION</span><i></i><span>HEADPHONES RECOMMENDED</span></div>
+      </section>
+      <aside class="mission-card">
+        <div class="card-heading"><span class="small-cross">＋</span> YOUR ONLY WAY OUT <span>01 — 10</span></div>
+        <div class="mission-art" aria-hidden="true"><div class="pie-drawing"><div></div><i></i><i></i><i></i></div><span class="art-orbit"></span><span class="art-caption">THE OFFERING</span></div>
+        <h2>10個のパイ。<br>ひとつだけの出口。</h2>
+        <p>深い森に散らばるパイを集め、<br>北の鳥居に捧げよ。<br>ただし、この森にはあなた以外もいる。</p>
+        <div class="entity-row"><span><i></i> 巨大な顔</span><span><i></i> 幽霊</span><span><i></i> ノッポ</span></div>
+      </aside>
+    </main>
+    <footer class="menu-bottom">
+      <div class="start-area">
+        <div class="difficulty-control"><span class="field-label">DIFFICULTY</span><div class="segmented" role="group" aria-label="難易度"><button data-difficulty="wander">探索</button><button data-difficulty="normal" class="selected">標準</button><button data-difficulty="nightmare">悪夢</button></div></div>
+        <button id="start-button" class="primary-button" disabled><span class="start-label">森を読み込み中<span>PREPARING THE FOREST</span></span><span class="button-arrow">↗</span></button>
+        <p class="start-note"><span class="tiny-key">!</span> イヤホン推奨 · 恐怖表現・点滅演出あり</p>
+      </div>
+      <div class="footer-links"><button id="howto-button">遊び方 <span>↗</span></button><button id="settings-button">設定 <span>↗</span></button><span class="edition">VOL. 01 / THE OFFERING</span></div>
+    </footer>
+    <div class="page-coordinate"><span>35° 42′ N &nbsp; 138° 36′ E</span><span>どこかの森、午前2時17分。</span></div>
+  </section>
+
+  <section id="game-hud" class="screen hidden" aria-label="ゲーム操作画面">
+    <header class="hud-header"><div class="hud-brand"><span class="brand-mark">Ⅲ</span><span>HOLLOW WOODS<small id="difficulty-label">STANDARD</small></span></div><div class="objective"><span class="pie-icon">◒</span><strong id="pie-count">0 <span>/ 10</span></strong><small id="objective-text">パイを集める</small></div><div class="hud-actions"><button id="map-button" class="hud-button" aria-label="地図を開く">⌖</button><button id="pause-button" class="hud-button" aria-label="一時停止">Ⅱ</button></div></header>
+    <div id="compass" class="compass"><span id="compass-heading">N</span><i></i><span id="compass-bearing">000°</span></div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <div id="center-dot" aria-hidden="true"></div>
+    <div id="interact-prompt" class="interact-prompt hidden"></div>
+    <div id="threat-text" class="threat-text"></div>
+    <div id="hud-bottom" class="hud-bottom"><div class="vital-panel"><div class="vital-label"><span>STAMINA</span><span id="stamina-value">100</span></div><div class="vital-track"><div id="stamina-fill"></div></div><div class="flashlight-status"><span id="lamp-status">● LIGHT ON</span><span id="game-time">00:00</span></div></div><p class="desktop-hint">W A S D 移動 <i>·</i> マウス 視点 <i>·</i> SHIFT 走る <i>·</i> F ライト <i>·</i> M 地図 <i>·</i> ESC 停止</p></div>
+    <div id="touch-controls"><div id="look-zone" aria-label="右側をスワイプして視点操作"></div><div id="move-stick" aria-label="左スティックで移動"><span class="stick-top">W</span><div id="stick-knob"></div></div><span class="look-tip" id="look-tip">スワイプで見回す</span><div class="touch-actions"><button id="lamp-button" aria-label="ライト切替"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="m8 3 8 0-1 7-1 2v9h-4v-9l-1-2Z"/><path d="M9 7h6M10 16h4"/></svg></button><button id="run-button" aria-label="押している間走る"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="15" cy="4" r="2"/><path d="m12 8 4 3 4-1M7 10l4-3-1 7 5 3 1 4M10 14l-3 5H3"/></svg><span>RUN</span></button></div></div>
+    <div id="map-panel" class="map-panel hidden"><header><div><span class="eyebrow">A FRAGMENT OF THE FOREST</span><h2>森の記憶</h2></div><button id="close-map" class="close-button" aria-label="地図を閉じる">×</button></header><canvas id="map-canvas" width="540" height="540" aria-label="探索済みの森の地図"></canvas><div class="map-legend"><span><i class="player-marker"></i>あなた</span><span><i class="pie-marker"></i>パイ</span><span><i class="exit-marker"></i>鳥居</span></div><p>歩いた場所だけが記憶に残る。<br>地図を開いている間も、森は動き続ける。</p></div>
+  </section>
+
+  <section id="pause-screen" class="overlay-screen hidden"><div class="dialog pause-dialog"><span class="eyebrow">TAKE A BREATH</span><h2>ひと息、つく。</h2><p>今だけは、森も静かだ。</p><button id="resume-button" class="primary-button">森に戻る <span>↗</span></button><button id="pause-settings" class="secondary-button">設定</button><button id="quit-button" class="text-button">タイトルに戻る</button></div></section>
+  <section id="result-screen" class="overlay-screen hidden"><div class="dialog result-dialog"><span id="result-eyebrow" class="eyebrow">THE FOREST REMEMBERS</span><h2 id="result-title">見つかった。</h2><p id="result-description">森は、またひとつ秘密を増やした。</p><div class="result-stats"><div><span>OFFERINGS</span><strong id="result-pies">0 / 10</strong></div><div><span>SURVIVED</span><strong id="result-time">00:00</strong></div></div><p id="result-record"></p><button id="retry-button" class="primary-button">もう一度、森へ <span>↗</span></button><button id="result-menu" class="text-button">タイトルに戻る</button></div></section>
+
+  <dialog id="help-dialog" class="dialog modal"><button class="close-button" data-close-dialog aria-label="閉じる">×</button><span class="eyebrow">BEFORE YOU ENTER</span><h2>森の掟。</h2><ol class="help-steps"><li><span>01</span><div><h3>10個のパイを見つける</h3><p>小さな琥珀色の灯りが目印。近づくと自動で拾います。光の粒子が遠くからも道しるべになります。</p></div></li><li><span>02</span><div><h3>3つの怪異から逃げ続ける</h3><p>巨大な顔、漂う幽霊、異様に背の高いノッポ。足音や心音が近づいたら走って。スタミナは歩くと回復します。</p></div></li><li><span>03</span><div><h3>北の鳥居へたどり着く</h3><p>10個すべてを集めて青緑色に光る鳥居へ。コンパスの矢印が、脱出方向を示します。</p></div></li></ol><div class="controls-guide"><div><h3>スマートフォン</h3><p>左スティック：移動<br>右画面をスワイプ：見回す<br>RUN 長押し / スティックを外へ：走る<br>ライトボタン：点灯 / 消灯</p></div><div><h3>パソコン</h3><p>WASD / 矢印：移動　マウス：視点<br>Shift：走る　F：ライト<br>M：地図　Esc / P：一時停止<br>画面クリックでマウスを捕捉</p></div></div><p class="dialog-note">「探索」は怪異が遅く、スタミナが長持ちします。<br>スマホは横向き推奨。縦向きでもプレイできます。</p></dialog>
+  <dialog id="settings-dialog" class="dialog modal settings-dialog"><button class="close-button" data-close-dialog aria-label="閉じる">×</button><span class="eyebrow">MAKE YOURSELF UNCOMFORTABLE</span><h2>森の設定。</h2><label class="setting-row"><span>サウンド<small>立体音響・足音・心音</small></span><input id="audio-setting" type="checkbox"></label><label class="setting-row"><span>画面の明るさ<small>暗い場合は上げてください</small></span><input id="brightness-setting" type="range" min="0.7" max="1.9" step="0.1" value="1.2"></label><label class="setting-row"><span>視点感度</span><input id="sensitivity-setting" type="range" min="0.4" max="2" step="0.1" value="1"></label><label class="setting-row"><span>描画品質<small>動作が重い場合は「軽量」に</small></span><select id="quality-setting"><option value="low">軽量</option><option value="medium" selected>標準</option><option value="high">高画質</option></select></label><label class="setting-row"><span>自動負荷調整<small>重いときだけ3D解像度を下げる</small></span><input id="adaptive-setting" type="checkbox" checked></label><label class="setting-row"><span>フレーム上限<small>30 FPS は発熱・電力を抑えます</small></span><select id="fps-setting"><option value="60">60 FPS</option><option value="30">30 FPS</option></select></label><label class="setting-row"><span>恐怖演出を抑える<small>点滅・揺れ・接写を軽減</small></span><input id="reduced-setting" type="checkbox"></label><p class="dialog-note">設定はこの端末に保存されます。<br>途中セーブはありません。1回の探索は約10〜25分。</p></dialog>
+  <div id="load-error" class="load-error hidden" role="alert"><h2>森に接続できませんでした</h2><p id="load-error-text">インターネット接続とWebGLの対応状況をご確認ください。</p><button onclick="location.reload()" class="secondary-button">再読み込み</button></div>
+  <script src="js/vendor/three.min.js"></script>
+  <script src="js/engine-utils.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
