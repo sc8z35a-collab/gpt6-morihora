@@ -125,8 +125,8 @@
     return geometry;
   }
 
-  // World-space transforms are baked only once. Each 24m sector becomes one opaque draw call.
-  function batchStatic(parent, material, sectorSize = 24) {
+  // World-space transforms are baked only once. Each 12m sector becomes one opaque draw call.
+  function batchStatic(parent, material, sectorSize = 12) {
     const groups = new Map(), sources = [], matrix = new THREE.Matrix4(), local = new THREE.Matrix4();
     function add(source, transform) {
       const x = transform.elements[12], z = transform.elements[14];
@@ -135,7 +135,7 @@
       groups.get(key).push({ geometry: source.geometry, matrix: transform.clone(), color: source.material.color });
     }
     for (const child of parent.children) {
-      if (!child.isMesh || child.isSprite || child.material.transparent || child.material.map || (child.material.emissiveIntensity && child.material.emissive?.getHex() !== 0)) continue;
+      if (!child.isMesh || child.isSprite || child.userData.noBatch || child.material.transparent || child.material.map || (child.material.emissiveIntensity && child.material.emissive?.getHex() !== 0)) continue;
       child.updateMatrix();
       if (child.isInstancedMesh) {
         for (let i = 0; i < child.count; i++) { child.getMatrixAt(i, local); matrix.multiplyMatrices(child.matrix, local); add(child, matrix); }
@@ -146,6 +146,7 @@
     for (const entries of groups.values()) {
       const chunk = new THREE.Mesh(mergeGeometry(entries, true), material);
       chunk.userData.ownedGeometry = true;
+      chunk.castShadow = true; chunk.receiveShadow = true;
       chunk.matrixAutoUpdate = false;
       parent.add(chunk); chunks.push(chunk);
     }
@@ -172,7 +173,7 @@
         if (source.userData.ownedGeometry) source.geometry.dispose();
       }
     }
-    parent.traverse(child => { if (child.isMesh && !child.isSprite) { child.updateMatrix(); child.matrixAutoUpdate = false; } });
+    parent.traverse(child => { if (child.isMesh && !child.isSprite) { child.castShadow = true; child.receiveShadow = true; child.updateMatrix(); child.matrixAutoUpdate = false; } });
   }
 
   function updateChunks(chunks, x, z, range = 70) {

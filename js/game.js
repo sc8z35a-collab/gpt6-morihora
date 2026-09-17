@@ -84,11 +84,15 @@
     $('adaptive-setting').checked = settings.adaptive;
     $('fps-setting').value = settings.fps;
     document.body.dataset.quality = settings.quality;
+    document.body.classList.toggle('reduced-motion', settings.reduced);
     $('sound-toggle').classList.toggle('sound-enabled', settings.audio);
     $('sound-toggle').querySelector('span').textContent = settings.audio ? 'SOUND ON' : 'SOUND OFF';
     $('sound-toggle').setAttribute('aria-label', settings.audio ? 'サウンドを無効にする' : 'サウンドを有効にする');
     if (renderer) {
       renderer.toneMappingExposure = Number(settings.brightness);
+      renderer.shadowMap.enabled = settings.quality === 'high';
+      flashlight.castShadow = settings.quality === 'high';
+      if (groundMist) groundMist.visible = settings.quality !== 'low';
       resizeRenderer();
     }
   }
@@ -104,7 +108,13 @@
   document.querySelectorAll('[data-difficulty]').forEach(btn => btn.addEventListener('click', () => {
     difficulty = btn.dataset.difficulty;
     document.querySelectorAll('[data-difficulty]').forEach(b => { b.classList.toggle('selected', b === btn); b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+    updateDifficultyInfo();
   }));
+  function updateDifficultyInfo() {
+    setText('difficulty-description', {wander:'初めての探索に。怪異は遅く、長く走れます。',normal:'静かな探索と、息をのむ追跡。標準の恐怖体験。',nightmare:'怪異は速く、息は続かない。生還者のための森。'}[difficulty]);
+    setText('menu-record', best[difficulty] ? `BEST ${formatTime(best[difficulty])}` : 'NO RECORD YET');
+  }
+  updateDifficultyInfo();
   $('howto-button').onclick = () => $('help-dialog').showModal();
   $('settings-button').onclick = $('pause-settings').onclick = () => $('settings-dialog').showModal();
   document.querySelectorAll('[data-close-dialog]').forEach(btn => btn.onclick = () => btn.closest('dialog').close());
@@ -138,7 +148,10 @@
   }
 
   const mat = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: .93, ...extra });
-  let materials, geometries, glowTexture;
+  let materials, geometries, glowTexture, groundMist, moonDisc, handheld;
+  const windUniform = { value: 0 };
+  const atmosphereTime = { value: 0 };
+  let presentationTime = 0;
   function mesh(geometry, material, parent, x = 0, y = 0, z = 0, sx = 1, sy = sx, sz = sx) {
     const m = new THREE.Mesh(geometry, material); m.position.set(x, y, z); m.scale.set(sx, sy, sz); if (parent) parent.add(m); return m;
   }
@@ -154,61 +167,208 @@
   function init3D() {
     if (!window.THREE) throw new Error('3Dライブラリを読み込めませんでした。ネット接続を確認して再読み込みしてください。');
     renderer = new THREE.WebGLRenderer({ canvas: $('world'), antialias: !touch, alpha: false, powerPreference: 'high-performance' });
-    renderer.setSize(innerWidth, innerHeight, false); renderer.setClearColor(0x14251e); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    scene = new THREE.Scene(); scene.background = new THREE.Color(0x14251e); scene.fog = new THREE.FogExp2(0x14251e, .038);
+    renderer.setSize(innerWidth, innerHeight, false); renderer.setClearColor(0x101c20); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    scene = new THREE.Scene(); scene.background = new THREE.Color(0x101c20); scene.fog = new THREE.FogExp2(0x101c20, .032);
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, .08, 110); camera.rotation.order = 'YXZ'; scene.add(camera);
-    const hemi = new THREE.HemisphereLight(0x9bb6ad, 0x25291c, 1.4); scene.add(hemi);
-    const moon = new THREE.DirectionalLight(0xabc6c4, 1.5); moon.position.set(-25, 65, 10); scene.add(moon);
-    flashlight = new THREE.SpotLight(0xf3edcf, 36, 40, Math.PI / 5.8, .67, 1.2); flashlight.position.set(0, -.16, -.15); camera.add(flashlight);
+    const hemi = new THREE.HemisphereLight(0x8daab8, 0x242619, .85); scene.add(hemi);
+    const moon = new THREE.DirectionalLight(0xa5c6d9, 2.1); moon.position.set(-25, 65, 10); scene.add(moon);
+    flashlight = new THREE.SpotLight(0xf3edcf, 36, 40, Math.PI / 6.5, .82, 1.2); flashlight.position.set(0, -.16, -.15); camera.add(flashlight);
     lightTarget = new THREE.Object3D(); lightTarget.position.set(0, -.12, -12); camera.add(lightTarget); flashlight.target = lightTarget;
+    flashlight.shadow.mapSize.set(1024, 1024); flashlight.shadow.bias = -.001; flashlight.shadow.normalBias = .035;
+    flashlight.shadow.camera.near = .15; flashlight.shadow.camera.far = 40;
     const fill = new THREE.PointLight(0xb8c8a5, .5, 7, 1); camera.add(fill);
     glowTexture = makeGlowTexture();
-    materials = { bark: mat(0x343c30), leaves: mat(0x1b3026), needles: mat(0x253c2e), ground: mat(0x17241b), rock: mat(0x3c4840), moss: mat(0x2c3c24), bush: mat(0x192a1c), path: mat(0x394235), bone: mat(0xc5c7a9), black: mat(0x070a08), eyes: mat(0xc1e9ca, { emissive: 0xbad4ae, emissiveIntensity: 1.4 }), teeth: mat(0xd7ceb1), cloth: mat(0x829c8f), wood: mat(0x473b2d), crust: mat(0xb77b35), filling: mat(0x4f1717), gold: mat(0xffd27d, { emissive: 0xe6ac45, emissiveIntensity: .9 }), shrine: mat(0x623b30) };
+    materials = { bark: mat(0x38362c), leaves: mat(0x233d35), needles: mat(0x253c2e), ground: mat(0x657064), rock: mat(0x46514d), moss: mat(0x2c3c24), bush: mat(0x192a1c), path: mat(0x394235), bone: mat(0xc5c7a9), black: mat(0x070a08), eyes: mat(0xc1e9ca, { emissive: 0xbad4ae, emissiveIntensity: 1.4 }), teeth: mat(0xd7ceb1), cloth: mat(0x829c8f), wood: mat(0x473b2d), crust: mat(0xb77b35), filling: mat(0x4f1717), gold: mat(0xffd27d, { emissive: 0xe6ac45, emissiveIntensity: .9 }), shrine: mat(0x623b30) };
     materials.batched = mat(0xffffff, { vertexColors: true });
-    geometries = { sphere: new THREE.SphereGeometry(1, 16, 12), rock: new THREE.IcosahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 7), trunk: new THREE.CylinderGeometry(.12, .22, 1, 6), cylinder: new THREE.CylinderGeometry(1, 1, 1, 12), box: new THREE.BoxGeometry(1, 1, 1) };
-    mesh(new THREE.PlaneGeometry(1200, 1200), materials.ground, scene, 170, -.11, -55).rotation.x = -Math.PI / 2;
+    addSurfaceDetail(materials.batched);
+    materials.ground.map = makeGroundTexture();
+    materials.ground.bumpMap = materials.ground.map; materials.ground.bumpScale = .16;
+    geometries = { sphere: new THREE.SphereGeometry(1, 16, 12), rock: new THREE.IcosahedronGeometry(1, 1), cone: new THREE.ConeGeometry(1, 1, 7), trunk: new THREE.CylinderGeometry(.10, .24, 1, 8), branch: new THREE.CylinderGeometry(.07, .17, 1, 5), cylinder: new THREE.CylinderGeometry(1, 1, 1, 12), box: new THREE.BoxGeometry(1, 1, 1) };
+    geometries.pine = makePineGeometry(); geometries.fern = makeFernGeometry();
+    const floor = mesh(new THREE.PlaneGeometry(1200, 1200), materials.ground, scene, 170, -.11, -55);
+    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+    createHandheld();
     createMenu(); createAtmosphere(); syncSettings(); gpuReady = true;
     $('start-button').disabled = false; $('start-button').innerHTML = '<span class="start-label">森に入る<span>ENTER THE FOREST</span></span><span class="button-arrow">↗</span>';
     renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); if (state === 'playing') pauseGame(); gpuReady = false; showError('描画が一時停止しました。復旧を待つか、ほかのアプリを閉じて再読み込みしてください。'); });
     renderer.domElement.addEventListener('webglcontextrestored', () => { gpuReady = true; renderDirty = true; lastTime = 0; resizeRenderer(); $('load-error').classList.add('hidden'); });
     requestAnimationFrame(animate);
   }
+  // Original procedural assets: no network textures, models or postprocessing dependency.
+  function makeGroundTexture() {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 512;
+    const ctx = canvas.getContext('2d'), rand = randomGenerator(29017);
+    ctx.fillStyle = '#55584b'; ctx.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 7000; i++) {
+      const x = rand() * 512, y = rand() * 512, r = 1 + rand() * 18;
+      ctx.fillStyle = `rgba(${rand() > .6 ? '102,110,69' : '22,27,25'},${.03 + rand() * .1})`;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * .5, rand() * 6.28, 0, 6.28); ctx.fill();
+    }
+    for (let i = 0; i < 3200; i++) {
+      const x = rand() * 512, y = rand() * 512;
+      ctx.strokeStyle = ['#383d32', '#74725a', '#454331', '#696451'][i % 4];
+      ctx.lineWidth = .5 + rand(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + rand() * 7 - 3, y + rand() * 6); ctx.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas); texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping; texture.repeat.set(120, 120);
+    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return texture;
+  }
+  function addSurfaceDetail(material) {
+    material.onBeforeCompile = shader => {
+      shader.uniforms.forestWind = windUniform;
+      shader.vertexShader = 'varying vec3 forestPosition;\nuniform float forestWind;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        // Batches contain world-space vertices. Bend only the canopy, never collision boundaries.
+        float canopy = smoothstep(4.0, 14.0, position.y);
+        transformed.x += sin(position.z * .17 + forestWind) * canopy * .13;
+        transformed.z += cos(position.x * .12 + forestWind * .7) * canopy * .09;
+        forestPosition = transformed;`);
+      shader.uniforms.forestDetail = { value: materials.ground.map };
+      shader.fragmentShader = 'varying vec3 forestPosition;\nuniform sampler2D forestDetail;\n' + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+        float grain = texture2D(forestDetail, vec2(forestPosition.x + forestPosition.z, forestPosition.y * .12) * .6).g * 3.0;
+        float moss = texture2D(forestDetail, forestPosition.xz * .08).g * 3.0;
+        diffuseColor.rgb *= .67 + grain * .48 + moss * .22;
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(.74,1.12,.8), (1.0-smoothstep(0.0,2.5,forestPosition.y)) * moss * .45);`);
+    };
+    material.customProgramCacheKey = () => 'forest-surface-v3';
+  }
+  function makePineGeometry() {
+    const verts = [], rand = randomGenerator(13);
+    // Broken, serrated branch whorls rather than stacked cones.
+    for (let tier = 0; tier < 6; tier++) {
+      const y = .32 + tier * .105, radius = (.24 - tier * .033), count = 13;
+      for (let i = 0; i < count; i++) {
+        const a = i / count * Math.PI * 2 + tier * .73, b = (i + 1) / count * Math.PI * 2 + tier * .73;
+        const ra = radius * (.7 + rand() * .45), rb = radius * (.7 + rand() * .45);
+        verts.push(0, y + .25, 0, Math.cos(b)*rb, y + rand()*.04, Math.sin(b)*rb, Math.cos(a)*ra, y + rand()*.04, Math.sin(a)*ra);
+        verts.push(0,y+.02,0,Math.cos(a)*ra,y,Math.sin(a)*ra,Math.cos(b)*rb,y,Math.sin(b)*rb);
+      }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); geo.computeVertexNormals(); return geo;
+  }
+  function makeFernGeometry() {
+    const verts = [];
+    for (let j = 0; j < 5; j++) {
+      const a = j * 2.399, dx = Math.cos(a), dz = Math.sin(a);
+      for (let k = 1; k <= 4; k++) {
+        const t = k / 5, reach = t * .9, height = Math.sin(t * 2.5) * .7;
+        const width = (1 - t) * .31;
+        for (const side of [-1, 1]) {
+          const leaf = [dx*reach,height,dz*reach, dx*(reach+.15)-dz*width*side,height-.045,dz*(reach+.15)+dx*width*side, dx*(reach+.2),height+.04,dz*(reach+.2)];
+          if (side === -1) verts.push(...leaf.slice(0,3),...leaf.slice(6,9),...leaf.slice(3,6)); else verts.push(...leaf);
+        }
+      }
+    }
+    const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(verts,3)); geo.computeVertexNormals(); return geo;
+  }
   function makeForestInstances(parent, entries) {
     const trunks = new THREE.InstancedMesh(geometries.trunk, materials.bark, entries.length);
-    const crowns = new THREE.InstancedMesh(geometries.cone, materials.leaves, entries.length * 2);
+    const crowns = new THREE.InstancedMesh(geometries.pine, materials.leaves, entries.length);
+    const limbs = new THREE.InstancedMesh(geometries.branch, materials.bark, entries.length * 5);
     const dummy = new THREE.Object3D();
     entries.forEach((t, i) => {
       dummy.position.set(t.x, t.h / 2, t.z); dummy.rotation.set(0, t.rot, t.lean || 0); dummy.scale.set(t.w, t.h, t.w); dummy.updateMatrix(); trunks.setMatrixAt(i, dummy.matrix);
-      for (let j = 0; j < 2; j++) { dummy.position.set(t.x, t.h * (.67 + j * .23), t.z); dummy.scale.set(t.h * (.24 - j * .05), t.h * .64, t.h * (.24 - j * .05)); dummy.updateMatrix(); crowns.setMatrixAt(i * 2 + j, dummy.matrix); }
+      dummy.position.set(t.x, 0, t.z); dummy.scale.set(t.h, t.h, t.h); dummy.updateMatrix(); crowns.setMatrixAt(i, dummy.matrix);
+      for (let j = 0; j < 5; j++) {
+        const a = t.rot + j * 2.4, reach = t.h * (.13 - j * .014);
+        dummy.position.set(t.x + Math.cos(a)*reach*.45, t.h*(.36+j*.095), t.z + Math.sin(a)*reach*.45);
+        dummy.rotation.set(Math.sin(a)*.95, 0, -Math.cos(a)*.95); dummy.scale.set(t.w*.35, reach*1.5, t.w*.35); dummy.updateMatrix(); limbs.setMatrixAt(i*5+j,dummy.matrix);
+      }
     });
-    trunks.instanceMatrix.needsUpdate = true; crowns.instanceMatrix.needsUpdate = true; parent.add(trunks, crowns);
+    for (const obj of [trunks, crowns, limbs]) { obj.instanceMatrix.needsUpdate = true; parent.add(obj); }
+  }
+  function addUndergrowth(parent, entries) {
+    const ferns = new THREE.InstancedMesh(geometries.fern, materials.moss, entries.length), dummy = new THREE.Object3D();
+    entries.forEach((e,i) => { dummy.position.set(e.x, 0, e.z); dummy.rotation.set(0,e.rot,0); dummy.scale.setScalar(e.h); dummy.updateMatrix(); ferns.setMatrixAt(i,dummy.matrix); });
+    parent.add(ferns);
+  }
+  function makeLantern(parent, x, z, light = false) {
+    const g = new THREE.Group(); g.position.set(x,0,z); parent.add(g);
+    mesh(geometries.box, materials.rock, g, 0,.1,0,.65,.2,.65);
+    mesh(geometries.cylinder, materials.wood, g, 0,.42,0,.15,.65,.15);
+    mesh(geometries.box, materials.black, g, 0,.84,0,.44,.08,.44);
+    mesh(geometries.box, materials.gold, g, 0,1.03,0,.23,.32,.23);
+    for (const a of [-1,1]) for (const b of [-1,1]) mesh(geometries.box,materials.wood,g,a*.18,1.04,b*.18,.035,.4,.035);
+    mesh(geometries.cone, materials.rock, g, 0,1.33,0,.4,.25,.4);
+    const halo = glow(g,0xffb85e,0,1.04,0,2.3); halo.material.opacity = .55;
+    if (light) { const lamp = new THREE.PointLight(0xffb363,8,11,1.5); lamp.position.set(0,1.2,0); g.add(lamp); }
+    ForestEngine.batchRigid(g); return g;
   }
   function createMenu() {
-    menuGroup = new THREE.Group(); scene.add(menuGroup); const rand = randomGenerator(83), trees = [];
-    for (let i = 0; i < 330; i++) {
-      const z = 40 - rand() * 110, x = 320 + (rand() - .5) * 105;
-      const trail = 320 + Math.sin(z * .055) * 4;
-      if (Math.abs(x - trail) < 3 && z > -45) continue;
-      trees.push({ x, z, h: 7 + rand() * 14, w: 1.2 + rand() * 2.2, rot: rand() * 6.28, lean: (rand() - .5) * .07 });
+    menuGroup = new THREE.Group(); scene.add(menuGroup); const rand = randomGenerator(83), trees = [], ferns = [];
+    for (let i = 0; i < 430; i++) {
+      const z = 35 - rand() * 115, x = 320 + (rand() - .5) * 110;
+      const trail = 320 + Math.sin(z * .055) * 3;
+      if (Math.abs(x - trail) < 3.4 && z > -45) continue;
+      trees.push({ x, z, h: 10 + rand() * 16, w: 1.5 + rand() * 2.5, rot: rand() * 6.28, lean: (rand() - .5) * .1 });
+      if (z > -30) ferns.push({x,z,h:1+rand()*1.5,rot:rand()*6.28});
     }
-    makeForestInstances(menuGroup, trees);
-    for (let i = 0; i < 28; i++) {
-      const z = 27 - i * 2.5, x = 320 + Math.sin(z * .055) * 4;
-      const path = mesh(geometries.cylinder, materials.path, menuGroup, x, -.07, z, 2.5, .02, 2.4); path.rotation.y = i;
-      if (i % 3 === 0) mesh(geometries.rock, materials.rock, menuGroup, x + (i % 2 ? -4.1 : 4.1), .3, z, 1.3, .65, .9);
+    makeForestInstances(menuGroup, trees); addUndergrowth(menuGroup, ferns);
+    for (let i = 0; i < 44; i++) {
+      const z = 28 - i * 1.6, x = 320 + Math.sin(z * .055) * 3;
+      const side = i % 2 ? -1 : 1;
+      mesh(geometries.rock, materials.rock, menuGroup, x + side * (3.4+rand()*2), .1, z, .4+rand(), .35+rand()*.6, .6+rand());
     }
-    const face = createEntity('face'); face.position.set(323.7, 3.2, -13); face.scale.setScalar(1.35); face.rotation.y = -.03; menuGroup.add(face); menuGroup.userData.face = face;
-    const tall = createEntity('tall'); tall.position.set(313.5, 0, -4); tall.rotation.y = .4; menuGroup.add(tall);
-    const lantern = new THREE.PointLight(0xe4ba75, 7, 13, 1.4); lantern.position.set(321.8, .7, 9); menuGroup.add(lantern); glow(menuGroup, 0xf0be70, 321.8, .55, 9, 1.4);
-    mesh(geometries.box, materials.wood, menuGroup, 321.8, .2, 9, .4, .4, .4);
-    const fogLight = new THREE.PointLight(0x9cc9b7, 12, 45, 1); fogLight.position.set(320, 8, -9); menuGroup.add(fogLight);
+    // A real, explorable-looking shrine tableau, composed around the negative space of the UI.
+    const shrine = new THREE.Group(); shrine.position.set(321,0,-4); shrine.scale.setScalar(1.35); menuGroup.add(shrine);
+    buildTorii(shrine);
+    const face = createEntity('face'); face.position.set(324.8, 3.5, -18); face.scale.setScalar(.85); menuGroup.add(face); menuGroup.userData.face = face;
+    const tall = createEntity('tall'); tall.position.set(314.2, 0, 3); tall.rotation.y = .4; menuGroup.add(tall);
+    makeLantern(menuGroup,317,8,true); makeLantern(menuGroup,324,1,true); makeLantern(menuGroup,318.4,-6,true);
+    const fogLight = new THREE.PointLight(0x83bfcf,16,40,1); fogLight.position.set(320,8,-9); menuGroup.add(fogLight);
+    const moon = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture,color:0xa6d5e4,opacity:.26,transparent:true,depthWrite:false,fog:false,blending:THREE.AdditiveBlending}));
+    moon.position.set(316,27,-65); moon.scale.set(32,32,1); menuGroup.add(moon);
+    moonDisc = mesh(new THREE.SphereGeometry(1,24,16),new THREE.MeshBasicMaterial({color:0xd4e2d5,fog:false}),menuGroup,316,27,-65,1.3);
+    moonDisc.userData.noBatch = true;
     ForestEngine.batchStatic(menuGroup, materials.batched);
   }
   function createAtmosphere() {
-    const count = 240, positions = new Float32Array(count * 3), rand = randomGenerator(72);
-    for (let i = 0; i < count; i++) { positions[i * 3] = (rand() - .5) * 65; positions[i * 3 + 1] = rand() * 11; positions[i * 3 + 2] = (rand() - .5) * 65; }
+    const count = 220, positions = new Float32Array(count * 3), rand = randomGenerator(72);
+    for (let i = 0; i < count; i++) { positions[i * 3] = (rand() - .5) * 65; positions[i * 3 + 1] = rand() * 10; positions[i * 3 + 2] = (rand() - .5) * 65; }
     const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    atmosphere = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xc6d3b0, size: .045, map: glowTexture, transparent: true, opacity: .6, depthWrite: false })); scene.add(atmosphere);
+    const particleMaterial = new THREE.PointsMaterial({ color: 0xb3cdbd, size: .07, map: glowTexture, transparent: true, opacity: .55, depthWrite: false });
+    particleMaterial.onBeforeCompile = shader => {
+      shader.uniforms.atmosphereTime = atmosphereTime;
+      shader.vertexShader = 'uniform float atmosphereTime;\n' + shader.vertexShader;
+      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+        transformed.x += sin(atmosphereTime * .4 + position.z) * .35;
+        transformed.y += sin(atmosphereTime * .6 + position.x) * .3;`);
+    };
+    atmosphere = new THREE.Points(geo, particleMaterial); scene.add(atmosphere);
+    groundMist = new THREE.Group(); scene.add(groundMist);
+    for (let i = 0; i < 12; i++) {
+      const mist = new THREE.Sprite(new THREE.SpriteMaterial({map:glowTexture,color:0x9dbac0,opacity:.055,transparent:true,depthWrite:false}));
+      mist.userData.offset = new THREE.Vector3((rand()-.5)*60,.35+rand()*1.4,(rand()-.5)*60);
+      mist.scale.set(20+rand()*16,2+rand()*2,1); groundMist.add(mist);
+    }
+  }
+  function createHandheld() {
+    handheld = new THREE.Group(); handheld.position.set(.27,-.3,-.46); handheld.rotation.set(-Math.PI/2+.13,0,-.15); camera.add(handheld);
+    const metal = mat(0x293434,{metalness:.75,roughness:.3}), rim = mat(0x777f79,{metalness:.8,roughness:.25});
+    mesh(geometries.cylinder,metal,handheld,0,0,0,.045,.24,.045);
+    mesh(geometries.cylinder,rim,handheld,0,.12,0,.062,.055,.062);
+    mesh(geometries.cylinder,materials.gold,handheld,0,.151,0,.048,.004,.048);
+    ForestEngine.batchRigid(handheld); handheld.traverse(obj => { obj.castShadow = false; obj.receiveShadow = false; }); handheld.visible = false;
+  }
+  function buildTorii(parent) {
+    for (const side of [-1,1]) {
+      const post = mesh(geometries.cylinder,materials.shrine,parent,side*1.8,2.5,0,.24,5,.24); post.rotation.z = side*.025;
+      mesh(geometries.cylinder,materials.rock,parent,side*1.86,.24,0,.4,.48,.4);
+      mesh(geometries.box,materials.wood,parent,side*1.8,4.85,0,.65,.14,.7);
+    }
+    mesh(geometries.box,materials.shrine,parent,0,4.75,0,5,.32,.5);
+    mesh(geometries.box,materials.black,parent,0,5.06,0,5.5,.23,.7);
+    for (const side of [-1,1]) { const tip=mesh(geometries.box,materials.black,parent,side*2.7,5.15,0,.8,.23,.7);tip.rotation.z=side*.18; }
+    mesh(geometries.box,materials.shrine,parent,0,3.7,0,4.6,.23,.28);
+    mesh(geometries.box,materials.wood,parent,0,4.23,.3,.5,.9,.13);
+    for (let j=0;j<3;j++) mesh(geometries.box,materials.gold,parent,0,4.43-j*.18,.375,.12,.055,.01);
+    for (let i=-3;i<=3;i++) {
+      const paper = mesh(geometries.box,materials.bone,parent,i*.39,3.18+Math.abs(i)*.08,.04,.13,.4,.025); paper.rotation.z=i%2?.25:-.25;
+      const rope = mesh(geometries.box,materials.wood,parent,i*.46,3.49+Math.abs(i)*.05,0,.5,.045,.04);rope.rotation.z=i*.06;
+    }
+    ForestEngine.batchRigid(parent);
   }
   function createEntity(type) {
     const g = new THREE.Group(), G = geometries, M = materials;
@@ -217,7 +377,7 @@
       mesh(G.sphere, M.bone, g, 0, -.87, .16, .94, 1, .62);
       for (const s of [-1, 1]) {
         mesh(G.sphere, M.black, g, s * .54, .38, .53, .42, .43, .19);
-        mesh(G.sphere, M.eyes, g, s * .54, .37, .7, .10, .12, .045);
+        mesh(G.sphere, M.eyes, g, s * .54, .37, .7, .038, .046, .035);
         const brow = mesh(G.box, M.bark, g, s * .56, .91, .54, .77, .12, .12); brow.rotation.z = s * -.2;
         mesh(G.sphere, M.bark, g, s * .8, -.55, .53, .07, .54, .04).rotation.z = s * .13;
       }
@@ -247,6 +407,18 @@
       }
       mesh(G.sphere, M.black, g, 0, 4.84, .25, .07, .21, .03);
     }
+    if (type === 'face') {
+      for (let i=0;i<9;i++) {
+        const side=i%2?1:-1, fissure=mesh(G.box,M.black,g,side*(.24+(i%3)*.26),.9-Math.floor(i/3)*.58,.625,.016,.28+(i%3)*.11,.014);
+        fissure.rotation.z=side*(.1+i*.07);
+      }
+      g.scale.x = .87;
+    } else if (type === 'ghost') {
+      for (let i=0;i<11;i++) {
+        const fold = mesh(G.cone,M.cloth,g,(i-5)*.14,.56+Math.sin(i)*.12,.23,.07,1.8,.08);
+        fold.rotation.z=(i-5)*.025;
+      }
+    }
     ForestEngine.batchRigid(g);
     return g;
   }
@@ -258,31 +430,30 @@
   function buildWorld() {
     disposeWorld(); mazeSeed = fixedSeed ?? Math.floor(Math.random() * 0xFFFFFF); const rand = buildMaze(mazeSeed);
     worldGroup = new THREE.Group(); scene.add(worldGroup);
-    const trees = [], shrubEntries = [], stoneEntries = [], trailEntries = [];
+    const trees = [], shrubEntries = [], stoneEntries = [], fernEntries = [];
     for (let i = 0; i < total; i++) {
       const p = position(i);
       if (grid[i]) {
         // Dense thorn/moss blocks make the collision boundary visually readable.
-        shrubEntries.push({ x: p.x, z: p.z, h: 1.8 + rand() * 1.25, rot: rand() * .06 });
+        shrubEntries.push({ x: p.x, z: p.z, h: 1.5 + rand() * .8, rot: rand() * 6.28 });
+        for (let f = 0; f < 6; f++) { const a = f / 6 * Math.PI * 2; fernEntries.push({x:p.x+Math.cos(a)*2.35,z:p.z+Math.sin(a)*2.35,h:1.3+rand(),rot:rand()*6.28}); }
         const n = 3 + (rand() > .5 ? 1 : 0);
         for (let j = 0; j < n; j++) trees.push({ x: p.x + (rand() - .5) * 4.7, z: p.z + (rand() - .5) * 4.7, h: 7 + rand() * 10, w: 1.3 + rand() * 2.2, rot: rand() * 6.28 });
         if (rand() > .5) stoneEntries.push({ x: p.x + (rand() - .5) * 4, z: p.z + (rand() - .5) * 4, h: 1 + rand() * 1.3, rot: rand() * 6.28 });
       } else {
-        trailEntries.push({ x: p.x, z: p.z, rot: rand() * 6.28 });
+        rand(); // Seeded scenery variation remains deterministic.
         if (rand() < .25) stoneEntries.push({ x: p.x + (rand() < .5 ? -2.6 : 2.6), z: p.z + (rand() - .5) * 4, h: .15 + rand() * .3, rot: rand() * 6.28 });
       }
     }
     makeForestInstances(worldGroup, trees);
     const dummy = new THREE.Object3D();
-    const bushes = new THREE.InstancedMesh(geometries.box, materials.bush, shrubEntries.length);
-    shrubEntries.forEach((e, i) => { dummy.position.set(e.x, e.h / 2 - .1, e.z); dummy.rotation.set(0, 0, 0); dummy.scale.set(TILE - .13, e.h, TILE - .13); dummy.updateMatrix(); bushes.setMatrixAt(i, dummy.matrix); });
+    const bushes = new THREE.InstancedMesh(geometries.rock, materials.bush, shrubEntries.length);
+    shrubEntries.forEach((e, i) => { dummy.position.set(e.x, .15, e.z); dummy.rotation.set(0, e.rot, 0); dummy.scale.set(3.25, e.h, 3.25); dummy.updateMatrix(); bushes.setMatrixAt(i, dummy.matrix); });
     bushes.instanceMatrix.needsUpdate = true; worldGroup.add(bushes);
     const rocks = new THREE.InstancedMesh(geometries.rock, materials.rock, stoneEntries.length);
     stoneEntries.forEach((e, i) => { dummy.position.set(e.x, e.h * .4, e.z); dummy.rotation.set(e.rot, e.rot, 0); dummy.scale.set(e.h * 1.5, e.h, e.h); dummy.updateMatrix(); rocks.setMatrixAt(i, dummy.matrix); });
     rocks.instanceMatrix.needsUpdate = true; worldGroup.add(rocks);
-    const paths = new THREE.InstancedMesh(geometries.cylinder, materials.path, trailEntries.length);
-    trailEntries.forEach((e, i) => { dummy.position.set(e.x, -.09, e.z); dummy.rotation.set(0, e.rot, 0); dummy.scale.set(3.05, .025, 3.05); dummy.updateMatrix(); paths.setMatrixAt(i, dummy.matrix); });
-    paths.instanceMatrix.needsUpdate = true; worldGroup.add(paths);
+    addUndergrowth(worldGroup, fernEntries);
     // Breadcrumb mushrooms, weathered direction signs and cairns.
     walkable.forEach((idx, n) => {
       const p = position(idx);
@@ -311,6 +482,7 @@
     }
     chosen.forEach((idx, i) => createPie(idx, i));
     createExit();
+    makeLantern(worldGroup, TILE-2, -TILE-2, true);
     const spawnCandidates = walkable.filter(i => d[i] > 35 && d[i] < 70);
     ['face', 'ghost', 'tall'].forEach((type, i) => {
       const pool = spawnCandidates.length ? spawnCandidates : walkable.filter(idx => d[idx] > 20);
@@ -337,16 +509,8 @@
   }
   function createExit() {
     const p = position(exitIndex); exitGroup = new THREE.Group(); exitGroup.position.set(p.x, 0, p.z); worldGroup.add(exitGroup);
-    for (const side of [-1, 1]) {
-      mesh(geometries.cylinder, materials.shrine, exitGroup, side * 1.7, 2.4, 0, .23, 4.8, .23);
-      mesh(geometries.cylinder, materials.rock, exitGroup, side * 1.7, .2, 0, .38, .4, .38);
-    }
-    mesh(geometries.box, materials.shrine, exitGroup, 0, 4.6, 0, 4.8, .35, .45);
-    mesh(geometries.box, materials.wood, exitGroup, 0, 5, 0, 5.4, .24, .64);
-    mesh(geometries.box, materials.shrine, exitGroup, 0, 3.7, 0, 4.3, .2, .25);
-    mesh(geometries.box, materials.wood, exitGroup, 0, 4.2, .22, .45, .8, .12);
-    mesh(geometries.box, materials.bone, exitGroup, 0, 4.2, .29, .06, .52, .025);
-    for (let i = -1; i <= 1; i++) { mesh(geometries.rock, materials.rock, exitGroup, i * .8, .24, 1.2, .7, .24, .45); glow(exitGroup, 0x8ecfbb, i * 1.7, .9, .15, 1.6); }
+    buildTorii(exitGroup);
+    for (const side of [-1,1]) makeLantern(exitGroup,side*2.6,1.5);
     const beacon = glow(exitGroup, 0x82dbbc, 0, 3, -.1, 7); beacon.material.opacity = .15; exitGroup.userData.beacon = beacon;
     const light = new THREE.PointLight(0x89cebb, 9, 17, 1); light.position.set(0, 3, 1); exitGroup.add(light);
     ForestEngine.batchRigid(exitGroup);
@@ -374,31 +538,34 @@
     camera.fov = 68; camera.updateProjectionMatrix(); lastThreatOpacity = lastAudioLevel = -1; frameSum = frameSamples = 0;
     $('look-tip').style.opacity = ''; $('map-button').setAttribute('aria-pressed', 'false');
     lampOn = true; lastCell = -1; fieldCell = -1; visualTimer = 0; hudTimer = 0; stepper.reset(); lastTime = 0; renderDirty = true; nextFootstep = nextHeartbeat = 0; headBob = threat = 0; capturedBy = ''; mapOpen = false;
-    state = 'playing'; menuGroup.visible = false; worldGroup.visible = true;
+    state = 'playing'; $('chapter-intro').classList.remove('hidden'); menuGroup.visible = false; worldGroup.visible = true;
     document.body.classList.add('playing');
     for (const id of ['menu-screen', 'pause-screen', 'result-screen', 'map-panel']) $(id).classList.add('hidden');
-    $('game-hud').classList.remove('hidden'); $('pie-count').innerHTML = '0 <span>/ 10</span>'; $('objective-text').textContent = 'パイを集める'; $('difficulty-label').textContent = levels[difficulty].name;
+    $('game-hud').inert = false; $('game-hud').classList.remove('hidden'); $('pie-count').innerHTML = '0 <span>/ 10</span>'; $('objective-text').textContent = 'パイを集める'; $('difficulty-label').textContent = levels[difficulty].name;
     $('danger-overlay').style.opacity = 0; $('flash-overlay').style.opacity = 0; $('threat-text').textContent = ''; $('interact-prompt').classList.add('hidden');
     $('lamp-status').textContent = '● LIGHT ON'; $('lamp-button').classList.add('active');
-    scene.fog.density = .045; toast('琥珀色の灯りを探して。10個集めたら、北の鳥居へ。', 6500);
+    scene.fog.density = .038; toast('琥珀色の灯りを探して。10個集めたら、北の鳥居へ。', 6500);
     revealMap(); updateCamera(0); updateHud(); requestPointer();
   }
   function pauseGame() {
     if (state !== 'playing') return;
     state = 'paused'; stepper.reset(); lastTime = 0; renderDirty = true; resetInput(); exitPointer(); $('pause-screen').classList.remove('hidden');
     audio.setAmbient(.04); audio.stopEffects();
+    $('game-hud').inert = true; $('resume-button').focus({preventScroll:true});
   }
-  function resumeGame() { if (state !== 'paused' || !gpuReady || document.hidden) return; state = 'playing'; stepper.reset(); lastTime = 0; lastAudioLevel = -1; frameSum = frameSamples = 0; renderDirty = true; $('pause-screen').classList.add('hidden'); audio.init(); requestPointer(); }
+  function resumeGame() { if (state !== 'paused' || !gpuReady || document.hidden) return; state = 'playing'; stepper.reset(); lastTime = 0; lastAudioLevel = -1; frameSum = frameSamples = 0; renderDirty = true; $('pause-screen').classList.add('hidden'); $('game-hud').inert = false; audio.init(); requestPointer(); }
   function returnMenu() {
     state = 'menu'; resetInput(); exitPointer(); toastRemaining = 0; menuGroup.visible = true; disposeWorld(); renderDirty = true; stepper.reset();
     document.body.classList.remove('playing'); for (const id of ['game-hud', 'pause-screen', 'result-screen']) $(id).classList.add('hidden'); $('menu-screen').classList.remove('hidden');
-    $('danger-overlay').style.opacity = 0; $('flash-overlay').style.opacity = 0; scene.fog.density = .038;
+    updateDifficultyInfo(); $('start-button').focus({preventScroll:true});
+    $('danger-overlay').style.opacity = 0; $('flash-overlay').style.opacity = 0; scene.fog.density = .032;
     camera.fov = 68; camera.updateProjectionMatrix(); lastTime = 0; audio.stopEffects(); audio.setAmbient(.16);
   }
   function finishGame(won) {
     state = won ? 'won' : 'lost'; renderDirty = true; stepper.reset(); audio.setAmbient(.04); resetInput(); exitPointer(); $('game-hud').classList.add('hidden'); $('result-screen').classList.remove('hidden'); $('flash-overlay').style.opacity = 0; $('danger-overlay').style.opacity = won ? 0 : .22;
     $('result-eyebrow').textContent = won ? 'YOU OWE THE FOREST NOTHING' : 'THE FOREST REMEMBERS'; $('result-title').textContent = won ? '夜が、明ける。' : '見つかった。';
     $('result-description').textContent = won ? '10個の供物は届いた。あなたの足音だけが、森を出た。' : `${capturedBy}に捕まった。森は、またひとつ秘密を増やした。`;
+    $('retry-button').focus({preventScroll:true});
     $('result-pies').textContent = `${collected} / 10`; $('result-time').textContent = formatTime(elapsed); $('result-record').textContent = '';
     if (won && !testRunning) {
       const previous = best[difficulty]; if (!previous || elapsed < previous) { best[difficulty] = elapsed; try { localStorage.setItem('hollow-woods-records', JSON.stringify(best)); } catch (_) {} $('result-record').textContent = 'この端末の最速記録を更新しました。'; } else $('result-record').textContent = `この難易度の最速記録：${formatTime(previous)}`;
@@ -566,7 +733,7 @@
       if (distance < 5 && hasLineOfSight(player.x, player.z, pie.x, pie.z)) nearby = true;
       if (distance < 1.5) {
         pie.collected = true; pie.group.visible = false; collected++; mapDirty = true;
-        $('pie-count').innerHTML = `${collected} <span>/ 10</span>`; audio.tone(660, .45, .1); audio.tone(990, .65, .04); if (touch && !testRunning && navigator.vibrate && !settings.reduced && navigator.userActivation?.hasBeenActive) navigator.vibrate(30);
+        $('pie-count').innerHTML = `${collected} <span>/ 10</span>`; updateHud(); audio.tone(660, .45, .1); audio.tone(990, .65, .04); if (touch && !testRunning && navigator.vibrate && !settings.reduced && navigator.userActivation?.hasBeenActive) navigator.vibrate(30);
         if (collected === 10) { toast('10個の供物が揃った。北の鳥居へ。コンパスの矢印を追って。', 6500); $('objective-text').textContent = '北の鳥居へ脱出'; exitGroup.userData.beacon.material.opacity = .65; }
         else toast(`パイを見つけた。 ${collected} / 10${collected === 5 ? ' — 森が、ざわめいている。' : ''}`, 2700);
         if (mapOpen) drawMap();
@@ -583,10 +750,21 @@
     camera.position.set(player.x, 1.68 + bob, player.z); camera.rotation.set(player.pitch, player.yaw, !settings.reduced && player.running ? Math.sin(headBob / 2) * .008 : 0, 'YXZ');
     const targetFov = player.running && !settings.reduced ? 74 : 68;
     if (Math.abs(camera.fov - targetFov) > .02) { camera.fov += (targetFov - camera.fov) * Math.min(dt * 5, 1); camera.updateProjectionMatrix(); }
-    flashlight.intensity = lampOn ? 36 : 0;
+    flashlight.intensity = lampOn ? 48 : 0;
+    const sway = settings.reduced ? 0 : Math.sin(headBob*.5) * (player.moving ? .025 : .006);
+    handheld.position.x = .27 + sway; handheld.position.y = -.3 - Math.abs(sway)*.4;
+    handheld.rotation.z = -.15 + sway;
+    lightTarget.position.x = THREE.MathUtils.lerp(lightTarget.position.x, sway*8, Math.min(dt*7,1));
+    lightTarget.position.y = THREE.MathUtils.lerp(lightTarget.position.y, -.12+bob*3, Math.min(dt*7,1));
   }
   function formatTime(seconds) { return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`; }
   function updateHud() {
+    $('offering-progress').style.setProperty('--collected', collected);
+    $('offering-progress').setAttribute('aria-valuenow', collected);
+    $('stamina-meter').setAttribute('aria-valuenow', Math.ceil(player.stamina));
+    $('chapter-intro').classList.toggle('hidden', elapsed > 5 || threat > .2);
+    setText('forest-state', threat > .4 ? '気配が近づいている' : elapsed < levels[difficulty].grace ? 'まだ、静かだ' : '森は、目を覚ました');
+    $('forest-state').classList.toggle('alert', threat > .4);
     $('stamina-fill').style.transform = `scaleX(${(player.stamina / 100).toFixed(3)})`; $('stamina-fill').style.background = player.exhausted ? '#c09570' : 'var(--mint)'; setText('stamina-value', Math.ceil(player.stamina)); setText('game-time', formatTime(elapsed));
     const bearing = ((-player.yaw * 180 / Math.PI) % 360 + 360) % 360;
     setText('compass-heading', ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(bearing / 45) % 8]);
@@ -628,8 +806,8 @@
     lastTime = time; lastRenderTime = renderDirty ? time : time - ((time - lastRenderTime) % interval); frameCount++; renderDirty = false;
     const dt = Math.min(seconds, .1);
     if (state === 'menu') {
-      const t = settings.reduced ? 0 : time * .00015; camera.position.set(320.4 + Math.sin(t) * .22, 2.2, 24); camera.lookAt(322.5 + Math.sin(t * .5) * .5, 3.0, -10); flashlight.intensity = 12;
-      menuGroup.userData.face.position.y = 3.2 + (settings.reduced ? 0 : Math.sin(time * .0007) * .15);
+      const t = settings.reduced ? 0 : time * .00015; camera.position.set(318.2 + Math.sin(t) * .18, 2.15, 18); camera.lookAt(319.2 + Math.sin(t * .5) * .25, 3.6, -10); flashlight.intensity = 9;
+      menuGroup.userData.face.position.y = 3.5 + (settings.reduced ? 0 : Math.sin(time * .0007) * .15);
     } else if (state === 'playing') {
       samplePerformance(seconds); stepper.advance(seconds, tick);
       if (state === 'playing') updateCamera(dt);
@@ -637,8 +815,15 @@
     } else if (state === 'caught') {
       catchTime += dt; $('flash-overlay').style.opacity = Math.max(0, .12 - catchTime * .24); if (catchTime > .85) finishGame(false);
     }
-    atmosphere.position.set(camera.position.x, 0, camera.position.z); atmosphere.rotation.y = settings.reduced ? 0 : time * .000009;
-    if (state === 'playing' || state === 'caught') { visualTimer -= dt; if (visualTimer <= 0) { ForestEngine.updateChunks(worldChunks, camera.position.x, camera.position.z); visualTimer = .15; } }
+    if (active && !settings.reduced) presentationTime += dt;
+    windUniform.value = presentationTime * .6; atmosphereTime.value = presentationTime;
+    handheld.visible = state === 'playing' || state === 'paused';
+    atmosphere.position.set(camera.position.x, 0, camera.position.z); atmosphere.rotation.y = settings.reduced ? 0 : presentationTime * .009;
+    for (let i = 0; i < groundMist.children.length; i++) {
+      const mist = groundMist.children[i], offset = mist.userData.offset;
+      mist.position.set(camera.position.x + ((offset.x + presentationTime*.25 + 45) % 90)-45,offset.y,camera.position.z + offset.z);
+    }
+    if (state === 'playing' || state === 'caught') { visualTimer -= dt; if (visualTimer <= 0) { ForestEngine.updateChunks(worldChunks, camera.position.x, camera.position.z, {low:42,medium:54,high:64}[settings.quality]); visualTimer = .15; } }
     renderer.render(scene, camera);
   }
 
@@ -654,7 +839,7 @@
         for (const pie of pies) pie.group.visible = Math.hypot(pie.x - p.x, pie.z - p.z) < 58;
         for (const enemy of enemies) enemy.group.visible = Math.hypot(enemy.x - p.x, enemy.z - p.z) < 62;
         for (const yaw of [0, Math.PI * 2 / 3, Math.PI * 4 / 3]) {
-          player.yaw = yaw; updateCamera(0); ForestEngine.updateChunks(worldChunks, player.x, player.z); renderer.render(scene, camera);
+          player.yaw = yaw; updateCamera(0); ForestEngine.updateChunks(worldChunks, player.x, player.z, {low:42,medium:54,high:64}[settings.quality]); renderer.render(scene, camera);
           samples.push({ calls: renderer.info.render.calls, triangles: renderer.info.render.triangles });
         }
       }
